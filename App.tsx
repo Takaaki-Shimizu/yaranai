@@ -5,7 +5,6 @@ import {
   View,
   FlatList,
   TextInput,
-  Button,
   TouchableOpacity,
 } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
@@ -205,22 +204,34 @@ export default function App() {
       </View>
 
       {/* 入力欄 */}
-      <View style={styles.form}>
+      <View style={styles.formCard}>
+        <Text style={styles.formTitle}>今日、やらないと決めること</Text>
         <TextInput
           style={styles.input}
-          placeholder="やらないことを入力"
+          placeholder="例: ベッドでスマホを触らない"
+          placeholderTextColor="#c08497"
           value={title}
           onChangeText={setTitle}
         />
 
+        <Text style={styles.formLabel}>気持ちを添えるメモ（任意）</Text>
         <TextInput
-          style={[styles.input, { marginTop: 8 }]}
-          placeholder="説明（任意）"
+          style={[styles.input, styles.inputSecondary]}
+          placeholder="例: おやすみ前の時間を自分に使う"
+          placeholderTextColor="#c4a1b5"
           value={description}
           onChangeText={setDescription}
         />
 
-        <Button title="追加" onPress={handleAdd} />
+        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+          <MaterialCommunityIcons
+            name="plus-circle-outline"
+            size={18}
+            color="#fff"
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.addButtonText}>やらないことを追加</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 一覧 */}
@@ -389,16 +400,60 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  form: {
-    marginBottom: 12,
+  formCard: {
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 18,
+    shadowColor: '#f472b6',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#ffe4ed',
+  },
+  formTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#be123c',
+    marginBottom: 10,
+  },
+  formLabel: {
+    marginTop: 16,
+    fontSize: 12,
+    color: '#9d174d',
+    fontWeight: '600',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
+    borderColor: '#fbcfe8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    backgroundColor: '#fff7fb',
+    color: '#312e81',
+  },
+  inputSecondary: {
+    marginTop: 8,
+    backgroundColor: '#fdf2f8',
+  },
+  addButton: {
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f472b6',
+    borderRadius: 999,
+    paddingVertical: 12,
+    shadowColor: '#f472b6',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
