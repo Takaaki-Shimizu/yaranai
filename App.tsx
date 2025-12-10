@@ -138,7 +138,7 @@ export default function App() {
 
   const formattedHourlyRate = useMemo(() => {
     if (hourlyRate == null) {
-      return '未設定です';
+      return null;
     }
 
     const floored = Math.floor(hourlyRate);
@@ -146,29 +146,62 @@ export default function App() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
-    return `${formatter.format(floored)}円`;
+    return formatter.format(floored);
   }, [hourlyRate]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Yaranai</Text>
-        <TouchableOpacity
-          style={styles.hourlyInfo}
-          onPress={() => setIncomeModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <View>
-            <Text style={styles.hourlyLabel}>あなたの時給は</Text>
-            <Text style={styles.hourlyValue}>{formattedHourlyRate}</Text>
+      <View style={styles.heroContainer}>
+        <View style={styles.heroBubbleOne} />
+        <View style={styles.heroBubbleTwo} />
+        <View style={styles.heroRow}>
+          <View style={styles.logoBlock}>
+            <View style={styles.logoRow}>
+              <Text style={styles.logoText}>
+                Ya
+                <Text style={styles.logoTextAccent}>ranai</Text>
+              </Text>
+              <View style={styles.logoPlus}>
+                <MaterialCommunityIcons
+                  name="plus"
+                  size={18}
+                  color="#fff"
+                />
+              </View>
+            </View>
+            <Text style={styles.logoSubtext}>
+              大事な自分を守るための「やらない」から始めよう
+            </Text>
           </View>
-          <MaterialCommunityIcons
-            name="pencil-outline"
-            size={22}
-            color="#2563eb"
-            style={styles.hourlyIcon}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.hourlyInfo}
+            onPress={() => setIncomeModalVisible(true)}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.hourlyLabel}>あなたの時給</Text>
+            <View style={styles.hourlyValueRow}>
+              {formattedHourlyRate ? (
+                <>
+                  <Text style={styles.hourlyValue}>{formattedHourlyRate}</Text>
+                  <Text style={styles.hourlyYen}>円</Text>
+                </>
+              ) : (
+                <Text style={styles.hourlyValue}>未設定です</Text>
+              )}
+              <View style={styles.hourlyEditBadge}>
+                <MaterialCommunityIcons
+                  name="pencil-outline"
+                  size={14}
+                  color="#fff"
+                />
+                <Text style={styles.hourlyEditText}>整える</Text>
+              </View>
+            </View>
+            <Text style={styles.hourlyMessage}>
+              今日のわたしの時間を、大切に積み上げていこう。
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 入力欄 */}
@@ -227,39 +260,134 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 80,
+    paddingTop: 72,
     paddingHorizontal: 24,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff9fb',
   },
-  header: {
+  heroContainer: {
+    backgroundColor: '#fef2f6',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 24,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  heroBubbleOne: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#fde0f0',
+    top: -30,
+    right: -20,
+    opacity: 0.5,
+  },
+  heroBubbleTwo: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#ffedd5',
+    bottom: -20,
+    left: -10,
+    opacity: 0.6,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  logoBlock: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: 10,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
+  logoText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1f2937',
+    letterSpacing: 1,
+  },
+  logoTextAccent: {
+    color: '#f97316',
+    fontWeight: '900',
+  },
+  logoPlus: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#ec4899',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ec4899',
+    shadowOpacity: 0.24,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  logoSubtext: {
+    marginTop: 6,
+    color: '#6b7280',
+    fontSize: 13,
+    lineHeight: 18,
   },
   hourlyInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#dbf1ff',
+    shadowColor: '#93c5fd',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 4,
   },
   hourlyLabel: {
     fontSize: 12,
-    color: '#2563eb',
+    color: '#1e40af',
+    fontWeight: '600',
+    letterSpacing: 0.4,
+  },
+  hourlyValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
   hourlyValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1d4ed8',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0f172a',
   },
-  hourlyIcon: {
-    marginLeft: 8,
+  hourlyYen: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginLeft: 4,
+  },
+  hourlyMessage: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#1e3a8a',
+    lineHeight: 16,
+  },
+  hourlyEditBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+    backgroundColor: '#f472b6',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  hourlyEditText: {
+    color: '#fff',
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: '600',
   },
   form: {
     marginBottom: 12,
