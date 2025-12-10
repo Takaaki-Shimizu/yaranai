@@ -9,12 +9,13 @@ import {
 } from 'react-native';
 import { useEffect, useState } from 'react';
 import { api, type YaranaiItem } from './src/lib/api';
-import { DeleteButton } from './src/components/DeleteButton';
+import { YaranaiItemRow } from './src/components/YaranaiItemRow';
 
 export default function App() {
   const [items, setItems] = useState<YaranaiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   // 新規登録用
   const [title, setTitle] = useState('');
@@ -79,6 +80,24 @@ export default function App() {
       });
   };
 
+  const handleUpdate = (id: number, payload: { title: string; description: string | null }) => {
+    setUpdatingId(id);
+    return api
+      .put<YaranaiItem>(`/yaranai-items/${id}`, payload)
+      .then((res) => {
+        setItems((prev) =>
+          prev.map((item) => (item.id === id ? res.data : item))
+        );
+      })
+      .catch((err) => {
+        console.error(err);
+        throw err;
+      })
+      .finally(() => {
+        setUpdatingId(null);
+      });
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Yaranai</Text>
@@ -111,23 +130,13 @@ export default function App() {
           data={items}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <View style={styles.item}>
-              <View style={styles.itemHeader}>
-                <View style={styles.itemText}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  {item.description ? (
-                    <Text style={styles.itemDescription}>
-                      {item.description}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <DeleteButton
-                  onPress={() => handleDelete(item.id)}
-                  loading={deletingId === item.id}
-                />
-              </View>
-            </View>
+            <YaranaiItemRow
+              item={item}
+              deleting={deletingId === item.id}
+              updating={updatingId === item.id}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+            />
           )}
           ListEmptyComponent={<Text>まだ登録されていません。</Text>}
         />
@@ -161,26 +170,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 16,
     backgroundColor: '#fafafa',
-  },
-  item: {
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  itemText: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  itemDescription: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#555',
   },
 });
