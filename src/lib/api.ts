@@ -18,3 +18,14 @@ export type YaranaiItem = {
   title: string;
   description?: string | null;
 };
+
+export type IncomeType = 'annual' | 'monthly' | 'hourly';
+
+export type IncomeSettingRequest = {
+  income_type: IncomeType;
+  amount: number;
+};
+
+export type IncomeSettingResponse = {
+  hourly_rate: number;
+};

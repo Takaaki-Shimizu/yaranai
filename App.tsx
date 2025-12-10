@@ -6,16 +6,28 @@ import {
   FlatList,
   TextInput,
   Button,
+  TouchableOpacity,
 } from 'react-native';
-import { useEffect, useState } from 'react';
-import { api, type YaranaiItem } from './src/lib/api';
+import { useEffect, useMemo, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  api,
+  type IncomeType,
+  type IncomeSettingResponse,
+  type YaranaiItem,
+} from './src/lib/api';
 import { YaranaiItemRow } from './src/components/YaranaiItemRow';
+import { IncomeSettingModal } from './src/components/IncomeSettingModal';
 
 export default function App() {
   const [items, setItems] = useState<YaranaiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [incomeModalVisible, setIncomeModalVisible] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState<number | null>(null);
+  const [incomeType, setIncomeType] = useState<IncomeType>('hourly');
+  const [incomeAmount, setIncomeAmount] = useState('');
 
   // 新規登録用
   const [title, setTitle] = useState('');
@@ -98,9 +110,66 @@ export default function App() {
       });
   };
 
+  const handleIncomeSubmit = (values: {
+    incomeType: IncomeType;
+    amount: string;
+  }) => {
+    const amountNumber = Number(values.amount);
+    if (!Number.isFinite(amountNumber) || amountNumber < 0) {
+      return Promise.reject(new Error('invalid amount'));
+    }
+
+    return api
+      .post<IncomeSettingResponse>('/income-settings', {
+        income_type: values.incomeType,
+        amount: amountNumber,
+      })
+      .then((res) => {
+        setHourlyRate(res.data.hourly_rate);
+        setIncomeType(values.incomeType);
+        setIncomeAmount(values.amount);
+        setIncomeModalVisible(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        throw err;
+      });
+  };
+
+  const formattedHourlyRate = useMemo(() => {
+    if (hourlyRate == null) {
+      return '未設定です';
+    }
+
+    const floored = Math.floor(hourlyRate);
+    const formatter = new Intl.NumberFormat('ja-JP', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    return `${formatter.format(floored)}円`;
+  }, [hourlyRate]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Yaranai</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Yaranai</Text>
+        <TouchableOpacity
+          style={styles.hourlyInfo}
+          onPress={() => setIncomeModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <View>
+            <Text style={styles.hourlyLabel}>あなたの時給は</Text>
+            <Text style={styles.hourlyValue}>{formattedHourlyRate}</Text>
+          </View>
+          <MaterialCommunityIcons
+            name="pencil-outline"
+            size={22}
+            color="#2563eb"
+            style={styles.hourlyIcon}
+          />
+        </TouchableOpacity>
+      </View>
 
       {/* 入力欄 */}
       <View style={styles.form}>
@@ -142,6 +211,14 @@ export default function App() {
         />
       )}
 
+      <IncomeSettingModal
+        visible={incomeModalVisible}
+        defaultType={incomeType}
+        defaultAmount={incomeAmount}
+        onClose={() => setIncomeModalVisible(false)}
+        onSubmit={handleIncomeSubmit}
+      />
+
       <StatusBar style="auto" />
     </View>
   );
@@ -154,10 +231,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: '#fff',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
   title: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 24,
+  },
+  hourlyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  hourlyLabel: {
+    fontSize: 12,
+    color: '#2563eb',
+  },
+  hourlyValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
+  hourlyIcon: {
+    marginLeft: 8,
   },
   form: {
     marginBottom: 12,
