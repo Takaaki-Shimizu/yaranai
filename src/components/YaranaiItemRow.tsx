@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DeleteButton } from './DeleteButton';
 import type { YaranaiItem } from '../lib/api';
 
@@ -35,34 +34,63 @@ export function YaranaiItemRow({
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description ?? '');
   const [saving, setSaving] = useState(false);
+  const titleInputRef = useRef<TextInput | null>(null);
+  const focusCountRef = useRef(0);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!editing) {
       setTitle(item.title);
       setDescription(item.description ?? '');
+      focusCountRef.current = 0;
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+    } else {
+      titleInputRef.current?.focus();
     }
   }, [item, editing]);
 
-  const startEdit = () => {
-    setEditing(true);
-  };
-
-  const cancelEdit = () => {
-    setEditing(false);
-    setTitle(item.title);
-    setDescription(item.description ?? '');
-  };
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = async () => {
-    if (!title.trim()) {
+    if (!editing || saving) {
+      return;
+    }
+
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description.trim()
+      ? description.trim()
+      : null;
+
+    if (!trimmedTitle) {
+      setTitle(item.title);
+      setDescription(item.description ?? '');
+      setEditing(false);
+      return;
+    }
+
+    const currentDescription = item.description ?? null;
+    if (
+      trimmedTitle === item.title &&
+      trimmedDescription === currentDescription
+    ) {
+      setEditing(false);
       return;
     }
 
     setSaving(true);
     try {
       await onUpdate(item.id, {
-        title: title.trim(),
-        description: description.trim() ? description.trim() : null,
+        title: trimmedTitle,
+        description: trimmedDescription,
       });
       setEditing(false);
     } catch (error) {
@@ -72,41 +100,66 @@ export function YaranaiItemRow({
     }
   };
 
+  const handleOutsideTap = () => {
+    if (!editing) {
+      setEditing(true);
+    }
+  };
+
+  const handleInputFocus = () => {
+    focusCountRef.current += 1;
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+  };
+
+  const handleInputBlur = () => {
+    if (!editing) {
+      return;
+    }
+
+    focusCountRef.current = Math.max(0, focusCountRef.current - 1);
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+
+    blurTimeoutRef.current = setTimeout(() => {
+      if (focusCountRef.current === 0) {
+        handleSave();
+      }
+    }, 120);
+  };
+
   if (editing) {
     return (
       <View style={styles.item}>
         <TextInput
+          ref={titleInputRef}
           style={styles.input}
           value={title}
           onChangeText={setTitle}
           placeholder="タイトル"
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          returnKeyType="next"
         />
         <TextInput
           style={[styles.input, { marginTop: 8 }]}
           value={description}
           onChangeText={setDescription}
           placeholder="説明（任意）"
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          multiline
         />
-        <View style={styles.editActions}>
-          <TouchableOpacity
-            style={[styles.secondaryButton, styles.actionButton]}
-            onPress={cancelEdit}
-            disabled={saving}
-          >
-            <Text style={styles.secondaryButtonText}>キャンセル</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.primaryButton, styles.actionButton, saving && styles.disabledButton]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.primaryButtonText}>保存</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.editHint}>別の場所をタップすると保存されます</Text>
+        {saving ? (
+          <View style={styles.updatingBadge}>
+            <ActivityIndicator size="small" color="#2563eb" />
+            <Text style={styles.updatingText}>保存中...</Text>
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -114,22 +167,20 @@ export function YaranaiItemRow({
   return (
     <View style={styles.item}>
       <View style={styles.itemHeader}>
-        <View style={styles.itemText}>
+        <TouchableOpacity
+          style={styles.itemText}
+          onPress={handleOutsideTap}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="項目を編集"
+        >
           <Text style={styles.itemTitle}>{item.title}</Text>
           {item.description ? (
             <Text style={styles.itemDescription}>{item.description}</Text>
           ) : null}
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={startEdit}
-            style={styles.iconButton}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="項目を編集"
-          >
-            <MaterialCommunityIcons name="pencil" size={22} color="#2563eb" />
-          </TouchableOpacity>
           <DeleteButton onPress={() => onDelete(item.id)} loading={deleting} />
         </View>
       </View>
@@ -170,12 +221,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 12,
   },
-  iconButton: {
-    padding: 4,
-    borderRadius: 999,
-    backgroundColor: '#eff6ff',
-    marginRight: 8,
-  },
   updatingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -195,32 +240,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fff',
   },
-  editActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 12,
-  },
-  actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 6,
-  },
-  primaryButton: {
-    backgroundColor: '#2563eb',
-    marginLeft: 12,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    backgroundColor: '#e5e7eb',
-  },
-  secondaryButtonText: {
-    color: '#111827',
-    fontWeight: '500',
-  },
-  disabledButton: {
-    opacity: 0.7,
+  editHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6b7280',
   },
 });
