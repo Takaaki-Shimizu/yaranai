@@ -9,10 +9,12 @@ import {
 } from 'react-native';
 import { useEffect, useState } from 'react';
 import { api, type YaranaiItem } from './src/lib/api';
+import { DeleteButton } from './src/components/DeleteButton';
 
 export default function App() {
   const [items, setItems] = useState<YaranaiItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // 新規登録用
   const [title, setTitle] = useState('');
@@ -62,6 +64,21 @@ export default function App() {
       });
   };
 
+  const handleDelete = (id: number) => {
+    setDeletingId(id);
+    api
+      .delete(`/yaranai-items/${id}`)
+      .then(() => {
+        setItems((prev) => prev.filter((item) => item.id !== id));
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        setDeletingId(null);
+      });
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Yaranai</Text>
@@ -95,10 +112,21 @@ export default function App() {
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
             <View style={styles.item}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              {item.description ? (
-                <Text style={styles.itemDescription}>{item.description}</Text>
-              ) : null}
+              <View style={styles.itemHeader}>
+                <View style={styles.itemText}>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  {item.description ? (
+                    <Text style={styles.itemDescription}>
+                      {item.description}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <DeleteButton
+                  onPress={() => handleDelete(item.id)}
+                  loading={deletingId === item.id}
+                />
+              </View>
             </View>
           )}
           ListEmptyComponent={<Text>まだ登録されていません。</Text>}
@@ -138,6 +166,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ccc',
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  itemText: {
+    flex: 1,
   },
   itemTitle: {
     fontSize: 18,
