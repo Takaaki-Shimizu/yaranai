@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,20 @@ export function YaranaiItemRow({
   const titleInputRef = useRef<TextInput | null>(null);
   const focusCountRef = useRef(0);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formattedHours = useMemo(() => {
+    if (typeof item.hours_per_day !== 'number') {
+      return null;
+    }
+
+    const rounded = Math.round(item.hours_per_day * 10) / 10;
+    if (Number.isNaN(rounded)) {
+      return null;
+    }
+
+    return Number.isInteger(rounded)
+      ? `${rounded.toFixed(0)}`
+      : `${rounded.toFixed(1)}`;
+  }, [item.hours_per_day]);
 
   useEffect(() => {
     if (!editing) {
@@ -154,6 +168,14 @@ export function YaranaiItemRow({
           multiline
         />
         <Text style={styles.editHint}>別の場所をタップすると保存されます</Text>
+        {formattedHours ? (
+          <View style={styles.savingInfo}>
+            <Text style={styles.savingLabel}>AI予測</Text>
+            <Text style={styles.savingText}>
+              1日あたり{formattedHours}時間節約
+            </Text>
+          </View>
+        ) : null}
         {saving ? (
           <View style={styles.updatingBadge}>
             <ActivityIndicator size="small" color="#2563eb" />
@@ -177,6 +199,11 @@ export function YaranaiItemRow({
           <Text style={styles.itemTitle}>{item.title}</Text>
           {item.description ? (
             <Text style={styles.itemDescription}>{item.description}</Text>
+          ) : null}
+          {formattedHours ? (
+            <Text style={styles.savingTextInline}>
+              1日あたり{formattedHours}時間節約
+            </Text>
           ) : null}
         </TouchableOpacity>
 
@@ -244,5 +271,31 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     color: '#6b7280',
+  },
+  savingInfo: {
+    marginTop: 10,
+    backgroundColor: '#ecfeff',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  savingLabel: {
+    fontSize: 11,
+    color: '#0f766e',
+    fontWeight: '700',
+  },
+  savingText: {
+    fontSize: 13,
+    color: '#134e4a',
+    fontWeight: '600',
+  },
+  savingTextInline: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#0369a1',
+    fontWeight: '600',
   },
 });

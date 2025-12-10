@@ -17,6 +17,7 @@ export type YaranaiItem = {
   id: number;
   title: string;
   description?: string | null;
+  hours_per_day?: number | null;
 };
 
 export type IncomeType = 'annual' | 'monthly' | 'hourly';
