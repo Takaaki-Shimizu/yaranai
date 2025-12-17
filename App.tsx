@@ -13,6 +13,7 @@ import {
   api,
   type IncomeType,
   type IncomeSettingResponse,
+  type DailySavingsPreviewResponse,
   type YaranaiItem,
 } from './src/lib/api';
 import { YaranaiItemRow } from './src/components/YaranaiItemRow';
@@ -27,6 +28,13 @@ export default function App() {
   const [hourlyRate, setHourlyRate] = useState<number | null>(null);
   const [incomeType, setIncomeType] = useState<IncomeType>('hourly');
   const [incomeAmount, setIncomeAmount] = useState('');
+  const [dailySavingPreview, setDailySavingPreview] =
+    useState<DailySavingsPreviewResponse | null>(null);
+  const [dailySavingPreviewError, setDailySavingPreviewError] = useState<
+    string | null
+  >(null);
+  const [dailySavingPreviewLoading, setDailySavingPreviewLoading] =
+    useState(false);
 
   // 新規登録用
   const [title, setTitle] = useState('');
@@ -48,9 +56,32 @@ export default function App() {
       });
   };
 
+  const fetchSavingsPreview = () => {
+    setDailySavingPreviewLoading(true);
+    setDailySavingPreviewError(null);
+    api
+      .get<DailySavingsPreviewResponse>('/daily-savings/preview')
+      .then((res) => {
+        setDailySavingPreview(res.data);
+        setHourlyRate(res.data.hourly_rate);
+      })
+      .catch((err: any) => {
+        console.error(err);
+        const message =
+          err?.response?.data?.message ??
+          '1日あたりの節約額を計算できませんでした。';
+        setDailySavingPreviewError(message);
+        setDailySavingPreview(null);
+      })
+      .finally(() => {
+        setDailySavingPreviewLoading(false);
+      });
+  };
+
   // 初期読み込み
   useEffect(() => {
     fetchItems();
+    fetchSavingsPreview();
   }, []);
 
   // 登録処理
@@ -70,6 +101,7 @@ export default function App() {
         setDescription('');
         // 一覧を再取得
         fetchItems();
+        fetchSavingsPreview();
       })
       .catch((err) => {
         console.error(err);
@@ -82,6 +114,7 @@ export default function App() {
       .delete(`/yaranai-items/${id}`)
       .then(() => {
         setItems((prev) => prev.filter((item) => item.id !== id));
+        fetchSavingsPreview();
       })
       .catch((err) => {
         console.error(err);
@@ -99,6 +132,7 @@ export default function App() {
         setItems((prev) =>
           prev.map((item) => (item.id === id ? res.data : item))
         );
+        fetchSavingsPreview();
       })
       .catch((err) => {
         console.error(err);
@@ -148,6 +182,47 @@ export default function App() {
     return formatter.format(floored);
   }, [hourlyRate]);
 
+  const formattedDailySavingAmount = useMemo(() => {
+    if (!dailySavingPreview) {
+      return null;
+    }
+    const rounded = Math.round(dailySavingPreview.amount_saved_per_day);
+    const formatter = new Intl.NumberFormat('ja-JP', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    return formatter.format(rounded);
+  }, [dailySavingPreview]);
+
+  const formattedDailySavingHours = useMemo(() => {
+    if (!dailySavingPreview) {
+      return null;
+    }
+    const rounded =
+      Math.round(dailySavingPreview.hours_saved_per_day * 10) / 10;
+    if (Number.isNaN(rounded)) {
+      return null;
+    }
+    return Number.isInteger(rounded)
+      ? `${rounded.toFixed(0)}`
+      : `${rounded.toFixed(1)}`;
+  }, [dailySavingPreview]);
+
+  const hourlyRateTextForPreview = useMemo(() => {
+    if (formattedHourlyRate) {
+      return formattedHourlyRate;
+    }
+    if (!dailySavingPreview) {
+      return null;
+    }
+    const floored = Math.floor(dailySavingPreview.hourly_rate);
+    const formatter = new Intl.NumberFormat('ja-JP', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+    return formatter.format(floored);
+  }, [dailySavingPreview, formattedHourlyRate]);
+
   return (
     <View style={styles.container}>
       <View style={styles.heroContainer}>
@@ -177,6 +252,38 @@ export default function App() {
             onPress={() => setIncomeModalVisible(true)}
             activeOpacity={0.9}
           >
+            <View style={styles.dailySavingPreviewCard}>
+              {dailySavingPreview ? (
+                <>
+                  <Text style={styles.dailySavingLabel}>
+                    守れた資産
+                  </Text>
+                  {formattedDailySavingAmount ? (
+                    <View style={styles.dailySavingAmountRow}>
+                      <Text style={styles.dailySavingAmount}>
+                        {formattedDailySavingAmount}
+                      </Text>
+                      <Text style={styles.dailySavingUnit}>円 / 日</Text>
+                    </View>
+                  ) : null}
+                  {hourlyRateTextForPreview && formattedDailySavingHours ? (
+                    <Text style={styles.dailySavingSubtext}>
+                      時給{hourlyRateTextForPreview}円 ×{' '}
+                      {formattedDailySavingHours}
+                      時間
+                    </Text>
+                  ) : null}
+                </>
+              ) : dailySavingPreviewLoading ? (
+                <Text style={styles.dailySavingPlaceholderText}>
+                  1日あたりの節約額を計算しています...
+                </Text>
+              ) : dailySavingPreviewError ? (
+                <Text style={styles.dailySavingPlaceholderText}>
+                  {dailySavingPreviewError}
+                </Text>
+              ) : null}
+            </View>
             <Text style={styles.hourlyLabel}>あなたの時給</Text>
             <View style={styles.hourlyValueRow}>
               {formattedHourlyRate ? (
@@ -356,6 +463,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 4,
+  },
+  dailySavingPreviewCard: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    marginBottom: 8,
+  },
+  dailySavingLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0c4a6e',
+    letterSpacing: 0.3,
+  },
+  dailySavingAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 4,
+    gap: 6,
+  },
+  dailySavingAmount: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#082f49',
+  },
+  dailySavingUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0c4a6e',
+    marginBottom: 4,
+  },
+  dailySavingSubtext: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#0369a1',
+    fontWeight: '600',
+  },
+  dailySavingPlaceholderText: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '600',
   },
   hourlyLabel: {
     fontSize: 12,

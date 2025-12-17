@@ -30,3 +30,9 @@ export type IncomeSettingRequest = {
 export type IncomeSettingResponse = {
   hourly_rate: number;
 };
+
+export type DailySavingsPreviewResponse = {
+  hourly_rate: number;
+  hours_saved_per_day: number;
+  amount_saved_per_day: number;
+};
